@@ -7,7 +7,7 @@
         <div class="announcement-header">
                   <h3>{{ task.name }}</h3>
                   <div class="date">
-                    {{ task.date | date:'shortDate' }}
+                    {{ task.date | date:'dd/MM/yy' }}
                     <ng-container *ngIf="task.repeat !== 'Multiple Plays' || (task.repeat === 'Multiple Plays' && task.multiplePlayType !== 'timeSlots')">
                       at {{ task.time | timeFormat}}
                     </ng-container>
@@ -21,7 +21,7 @@
           <small *ngIf="task.repeat === 'Multiple Plays' && task.multiplePlayType === 'timeSlots'">
             Time Slots | 
           </small>
-          <small *ngIf="task.endDate">Ends: {{ task.endDate | date:'shortDate' }} | </small>
+          <small *ngIf="task.endDate">Ends: {{ task.endDate | date:'dd/MM/yy' }} | </small>
           <small *ngIf="!task.endDate && task.repeat !== 'One Off'">No End Date | </small>
           <small>{{ task.interruptType }}</small>
         </div>
