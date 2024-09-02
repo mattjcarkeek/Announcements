@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { UniqueColorPipe } from './unique-color.pipe';
@@ -7,6 +7,7 @@ import { ColorNamePipe } from './color-name.pipe';
 import { TimePickerComponent } from '../time-picker/time-picker.component';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-calendar',
   standalone: true,
   imports: [CommonModule, FormsModule, UniqueColorPipe, TimeFormatPipe, ColorNamePipe, TimePickerComponent],
@@ -267,4 +268,7 @@ export class CalendarComponent implements OnInit {
   private formatTimeForInput(date: Date): string {
     return date.toTimeString().slice(0, 5);
   }
+  
 }
+
+
