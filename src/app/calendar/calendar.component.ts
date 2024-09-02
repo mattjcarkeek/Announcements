@@ -113,7 +113,7 @@ export class CalendarComponent implements OnInit {
     this.editingTaskId = task.id;
     this.newTask = { ...task };
     this.selectedDate = new Date(task.date);
-    this.showEndDate = task.endDate !== null;
+    this.showEndDate = !!task.endDate;
   }
 
   deleteAnnouncement() {
