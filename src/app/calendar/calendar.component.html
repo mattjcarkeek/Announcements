@@ -9,7 +9,7 @@
                   <div class="date">
                     {{ task.date | date:'shortDate' }}
                     <ng-container *ngIf="task.repeat !== 'Multiple Plays' || (task.repeat === 'Multiple Plays' && task.multiplePlayType !== 'timeSlots')">
-                      at {{ task.time }}
+                      at {{ task.time | timeFormat}}
                     </ng-container>
                   </div>
                 </div>
@@ -140,10 +140,6 @@
 
     <div class="interrupt-type-selection">
       <h4>Interrupt Type</h4>
-      <!-- Remove or comment out this section -->
-      <!--
-      <small>{{ newTask.interruptType }}</small>
-      -->
       <select [(ngModel)]="newTask.interruptType">
         <option value="Wait">Wait</option>
         <option value="Mix">Mix</option>
