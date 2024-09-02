@@ -114,6 +114,18 @@ export class CalendarComponent implements OnInit {
     this.newTask = { ...task };
     this.selectedDate = new Date(task.date);
     this.showEndDate = !!task.endDate;
+    if (task.endDate) {
+      const endDate = new Date(task.endDate);
+    this.newTask.endDate = this.formatDateForInput(endDate);
+    this.newTask.endTime = this.formatTimeForInput(endDate);
+    this.newTask.endDateChoice = 'Choose End Date';
+    this.showEndDate = true;
+  } else {
+    this.newTask.endDate = '';
+    this.newTask.endTime = '';
+    this.newTask.endDateChoice = '';
+    this.showEndDate = false;
+    }
   }
 
   deleteAnnouncement() {
@@ -246,5 +258,13 @@ export class CalendarComponent implements OnInit {
 
   addTimeSlot() {
     this.newTask.timeSlots.push('');
+  }
+
+  private formatDateForInput(date: Date): string {
+    return date.toISOString().split('T')[0];
+  }
+
+  private formatTimeForInput(date: Date): string {
+    return date.toTimeString().slice(0, 5);
   }
 }
