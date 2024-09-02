@@ -1,0 +1,158 @@
+<div class="calendar-container">
+  <div class="announcements">
+    <h2>Announcements</h2>
+    <div *ngFor="let task of tasks" class="announcement" (click)="editAnnouncement(task)">
+      <div class="announcement-color" [style.background-color]="task.color"></div>
+      <div class="announcement-details">
+        <div class="announcement-header">
+                  <h3>{{ task.name }}</h3>
+                  <div class="date">
+                    {{ task.date | date:'shortDate' }}
+                    <ng-container *ngIf="task.repeat !== 'Multiple Plays' || (task.repeat === 'Multiple Plays' && task.multiplePlayType !== 'timeSlots')">
+                      at {{ task.time }}
+                    </ng-container>
+                  </div>
+                </div>
+        <div class="announcement-info">
+          <small>{{ task.repeat }} | </small>
+          <small *ngIf="task.repeat === 'Multiple Plays' && task.multiplePlayType === 'interval'">
+            Every {{ task.interval }} {{ task.intervalUnit }} | 
+          </small>
+          <small *ngIf="task.repeat === 'Multiple Plays' && task.multiplePlayType === 'timeSlots'">
+            Time Slots | 
+          </small>
+          <small *ngIf="task.endDate">Ends: {{ task.endDate | date:'shortDate' }} | </small>
+          <small *ngIf="!task.endDate && task.repeat !== 'One Off'">No End Date | </small>
+          <small>{{ task.interruptType }}</small>
+        </div>
+        <div *ngIf="task.repeat !== 'One Off'" class="announcement-days">
+          <small>{{ getSelectedDaysString(task) }}</small>
+        </div>
+        <div *ngIf="task.repeat === 'Multiple Plays' && task.multiplePlayType === 'interval'" class="announcement-active-hours">
+          <small>Active: {{ task.activeHoursStart | timeFormat }} - {{ task.activeHoursEnd | timeFormat }}</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="calendar-wrapper">
+    <div class="calendar">
+      <div class="calendar-header">
+        <button (click)="prevMonth()"><</button>
+        <h2>{{ currentDate | date:'MMMM yyyy' }}</h2>
+        <button (click)="nextMonth()">></button>
+      </div>
+      <div class="calendar-weekdays">
+        <div *ngFor="let day of weekDays" class="weekday">{{ day }}</div>
+      </div>
+      <div class="calendar-days">
+        <div *ngFor="let day of days" class="day"
+             [class.empty]="!day"
+             [class.past-date]="day && day < currentDate"
+             [class.disabled]="!isDateSelectable(day)" 
+             (click)="selectDate(day)">
+          <span *ngIf="day">{{ day | date:'d' }}</span>
+          <div *ngIf="day" class="day-tasks">
+            <div *ngFor="let task of getTasksForDate(day)"
+                 class="task-indicator"
+                 [style.background-color]="task.color"
+                 (click)="editAnnouncement(task); $event.stopPropagation()">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="selectedDate" class="task-creation">
+    <h3>Announcement for {{ selectedDate | date:'mediumDate' }}</h3>
+    <input [(ngModel)]="newTask.name" placeholder="Announcement Name" type="text">
+    <app-time-picker *ngIf="newTask.repeat !== 'Multiple Plays' || (newTask.repeat === 'Multiple Plays' && newTask.multiplePlayType === 'interval')" [(time)]="newTask.time"></app-time-picker>
+    <div class="repeat-end-date-row">
+      <select [(ngModel)]="newTask.repeat" (change)="onRepeatChange()">
+        <option value="One Off">One Off</option>
+        <option value="Daily">Daily</option>
+        <option value="Multiple Plays">Multiple Plays</option>
+      </select>
+      <select *ngIf="newTask.repeat !== 'One Off'" [(ngModel)]="newTask.endDateChoice" (change)="onEndDateChoiceChange()">
+        <option value="">No End Date</option>
+        <option value="Choose End Date">Choose End Date</option>
+      </select>
+    </div>
+    <div *ngIf="showEndDate" class="end-date-time">
+      <input [(ngModel)]="newTask.endDate" type="date" class="end-date-input">
+      <app-time-picker [(time)]="newTask.endTime"></app-time-picker>
+    </div>
+
+    <div *ngIf="newTask.repeat === 'Multiple Plays'" class="multiple-plays-options">
+      <select [(ngModel)]="newTask.multiplePlayType">
+        <option value="interval" selected>Interval</option>
+        <option value="timeSlots">Time Slots</option>
+      </select>
+
+      <div *ngIf="newTask.multiplePlayType === 'interval'" class="interval-selector">
+        <h4>Interval</h4>
+        <input type="number" [(ngModel)]="newTask.interval" min="1">
+        <select [(ngModel)]="newTask.intervalUnit">
+          <option value="minutes">Minutes</option>
+          <option value="hours">Hours</option>
+        </select>
+      </div>
+
+      <div *ngIf="newTask.multiplePlayType === 'timeSlots'" class="time-slots-selector">
+        <div *ngFor="let slot of newTask.timeSlots; let i = index" class="time-slot">
+          <app-time-picker [(time)]="newTask.timeSlots[i]"></app-time-picker>
+          <button *ngIf="i === newTask.timeSlots.length - 1" (click)="addTimeSlot()" class="add-time-slot">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="newTask.repeat === 'Multiple Plays' && newTask.multiplePlayType === 'interval'" class="active-hours">
+      <h4>Active Hours</h4>
+      <div class="time-range">
+        <app-time-picker [(time)]="newTask.activeHoursStart"></app-time-picker>
+        <span>to</span>
+        <app-time-picker [(time)]="newTask.activeHoursEnd"></app-time-picker>
+      </div>
+    </div>
+
+    <div *ngIf="newTask.repeat !== 'One Off'" class="day-selector">
+      <div class="day-options">
+        <span *ngFor="let day of weekDays"
+              [class.selected]="newTask.selectedDays.includes(day)"
+              (click)="toggleDaySelection(day)">
+          {{ day }}
+        </span>
+      </div>
+    </div>
+
+    <div class="color-selection">
+      <h4>Set Colour Code</h4>
+      <select [(ngModel)]="newTask.color" required [ngStyle]="{'background-color': newTask.color || 'transparent'}">
+        <option value="" disabled [selected]="!newTask.color">Choose a color</option>
+        <option *ngFor="let color of availableColors" 
+                [value]="color" 
+                [disabled]="isColorUsed(color)"
+                [ngStyle]="{'background-color': color}">
+        </option>
+      </select>
+    </div>
+
+    <div class="interrupt-type-selection">
+      <h4>Interrupt Type</h4>
+      <!-- Remove or comment out this section -->
+      <!--
+      <small>{{ newTask.interruptType }}</small>
+      -->
+      <select [(ngModel)]="newTask.interruptType">
+        <option value="Wait">Wait</option>
+        <option value="Mix">Mix</option>
+        <option value="Halt">Halt</option>
+        <option value="Overlay">Overlay</option>
+      </select>
+    </div>
+
+    <button (click)="addOrUpdateTask()">{{ isEditing ? 'Update Announcement' : 'Add Announcement' }}</button>
+    <button *ngIf="isEditing" (click)="deleteAnnouncement()" class="delete-button">Delete Announcement</button>
+  </div>
+</div>
