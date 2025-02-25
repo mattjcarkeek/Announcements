@@ -1,0 +1,252 @@
+<div class="calendar-container">
+  <div class="announcements">
+    <div class="announcements-header">
+      <h2>Announcements</h2>
+      <input 
+        type="text" 
+        [(ngModel)]="spreadsheetName" 
+        placeholder="Name this Spreadsheet"
+        class="spreadsheet-name-input">
+      <button (click)="exportToExcel()" class="export-button">Export to Excel</button>
+      <button (click)="resetCalendar()" class="reset-button">Reset Calendar</button>
+    </div>
+    <div *ngFor="let task of tasks" class="announcement">
+      <div class="announcement-color" [style.background-color]="task.color"></div>
+      
+      <div class="announcement-details" (click)="onPromoClick(task)">
+        <div class="announcement-header">
+          <h3>
+            <!-- Display logic for single vs grouped promos -->
+            <span *ngIf="task.promoType === 'single'">{{ task.name }}</span>
+            <span *ngIf="task.promoType === 'grouped'">Grouped Promo ({{ task.assets.length }} items)</span>
+          </h3>
+          
+          <div class="date">
+            {{ task.date | date:'dd/MM/yy' }}
+            <ng-container *ngIf="task.repeat !== 'Multiple Plays' || (task.repeat === 'Multiple Plays' && task.multiplePlayType !== 'timeSlots')">
+              at {{ task.time | timeFormat}}
+            </ng-container>
+          </div>
+        </div>
+    
+        <!-- Grouped Promos Expandable List -->
+        <div *ngIf="task.promoType === 'grouped' && expandedGroupId === task.id" 
+             class="grouped-promos-list">
+          <div *ngFor="let asset of task.assets" class="grouped-promo-item">
+            {{ asset }}
+          </div>
+        </div>
+    
+        <!-- Regular announcement info -->
+        <div class="announcement-info">
+          <small>{{ task.repeat }} | </small>
+          <small *ngIf="task.repeat === 'Multiple Plays' && task.multiplePlayType === 'interval'">
+            Every {{ task.interval }} {{ task.intervalUnit }} |
+          </small>
+          <small *ngIf="task.repeat === 'Multiple Plays' && task.multiplePlayType === 'timeSlots'">
+            Time Slots |
+          </small>
+          <small *ngIf="task.endDate">Ends: {{ task.endDate | date:'dd/MM/yy' }} | </small>
+          <small *ngIf="!task.endDate && task.repeat !== 'One Off'">No End Date | </small>
+          <small>{{ task.interruptType }}</small>
+        </div>
+    
+        <div *ngIf="task.repeat !== 'One Off'" class="announcement-days">
+          <small>{{ getSelectedDaysString(task) }}</small>
+        </div>
+    
+        <div *ngIf="task.repeat === 'Multiple Plays' && task.multiplePlayType === 'interval'" 
+             class="announcement-active-hours">
+          <small>Active: {{ task.activeHoursStart | timeFormat }} - {{ task.activeHoursEnd | timeFormat }}</small>
+        </div>
+      </div>
+    </div>
+  </div>
+    
+
+  <div class="calendar-wrapper">
+    <div class="calendar">
+      <div class="calendar-header">
+        <button (click)="prevMonth()"><</button>
+        <h2>{{ currentDate | date:'MMMM yyyy' }}</h2>
+        <button (click)="nextMonth()">></button>
+      </div>
+      <div class="calendar-weekdays">
+        <div *ngFor="let day of weekDays" class="weekday">{{ day }}</div>
+      </div>
+      <div class="calendar-days">
+        <div *ngFor="let day of days" class="day"
+             [class.empty]="!day"
+             [class.past-date]="day && day < currentDate"
+             [class.disabled]="!isDateSelectable(day)" 
+             (click)="selectDate(day)">
+          <span *ngIf="day">{{ day | date:'d' }}</span>
+          <div *ngIf="day" class="day-tasks">
+            <div *ngFor="let task of getTasksForDate(day)"
+                 class="task-indicator"
+                 [style.background-color]="task.color"
+                 (click)="editAnnouncement(task); $event.stopPropagation()">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="selectedDate" class="task-creation">
+    <h3>Announcement for {{ selectedDate | date:'mediumDate' }}</h3>
+    
+    <!-- Promo Type Selection -->
+    <div class="promo-type-selection">
+      <label>
+        <input type="radio" name="promoType" value="single" [(ngModel)]="newTask.promoType" (change)="onPromoTypeChange()" checked>
+        Single Promo
+      </label>
+      <label>
+        <input type="radio" name="promoType" value="grouped" [(ngModel)]="newTask.promoType" (change)="onPromoTypeChange()">
+        Grouped Promos
+      </label>
+    </div>
+    
+    <div class="file-input-container">
+      <!-- Single Promo File Input -->
+      <input *ngIf="newTask.promoType === 'single'" type="file" (change)="onFileSelected($event)" #fileInput />
+      <!-- <input *ngIf="newTask.promoType === 'single'" type="file" (change)="onFileSelected($event)" #fileInput accept=".mp4,.mp3,.wav,.mpg,.mov"> -->
+      
+      <!-- Grouped Promos File Input -->
+      <input *ngIf="newTask.promoType === 'grouped'" type="file" multiple (change)="onMultipleFilesSelected($event)" #filesInput />
+      <!-- <input *ngIf="newTask.promoType === 'grouped'" type="file" multiple (change)="onMultipleFilesSelected($event)" #filesInput accept=".mp4,.mp3,.wav,.mpg,.mov"> -->
+      
+      <!-- Common Inputs -->
+      <input [(ngModel)]="newTask.name" placeholder="Announcement Name*" type="text" readonly>
+      <input [(ngModel)]="newTask.systems" placeholder="Systems*" type="text">
+    </div>
+    
+    <!-- Additional Options for Grouped Promos -->
+    <div *ngIf="newTask.promoType === 'grouped'" class="grouped-promos-options">
+      <!-- Play Order -->
+      <div class="option-row">
+        <label for="playOrder">Play Order*</label>
+        <select id="playOrder" [(ngModel)]="newTask.playOrder" (change)="onPlayOrderChange()">
+          <option value="Ordered">Ordered</option>
+          <option value="Shuffled">Shuffled</option>
+        </select>
+      </div>
+      
+      <!-- Play Number -->
+      <div class="option-row">
+        <label for="playNumber">Play Number*</label>
+        <select id="playNumber" [(ngModel)]="newTask.playNumber">
+          <option *ngFor="let num of playNumberOptions" [value]="num">{{ num }}</option>
+        </select>
+      </div>
+      
+      <!-- Offset -->
+      <div class="option-row">
+        <label for="offset">Offset*</label>
+        <select id="offset" [(ngModel)]="newTask.offset">
+          <option *ngFor="let num of offsetOptions" [value]="num">{{ num }}</option>
+        </select>
+      </div>
+      
+      <!-- Asset Shuffle Seed (Only if Shuffled is selected) -->
+      <div *ngIf="newTask.playOrder === 'Shuffled'" class="option-row">
+        <label for="assetShuffleSeed">Asset Shuffle Seed</label>
+        <input id="assetShuffleSeed" type="number" [(ngModel)]="newTask.assetShuffleSeed" [readonly]="true">
+      </div>
+    </div>
+
+    <!-- Time Picker -->
+    <app-time-picker *ngIf="newTask.repeat !== 'Multiple Plays' || (newTask.repeat === 'Multiple Plays' && newTask.multiplePlayType === 'interval')" [(time)]="newTask.time"></app-time-picker>
+    
+    <div class="repeat-end-date-row">
+      <select [(ngModel)]="newTask.repeat" (change)="onRepeatChange()">
+        <option value="One Off">One Off</option>
+        <option value="Daily">Daily</option>
+        <option value="Multiple Plays">Multiple Plays</option>
+      </select>
+      <select *ngIf="newTask.repeat !== 'One Off'" [(ngModel)]="newTask.endDateChoice" (change)="onEndDateChoiceChange()">
+        <option value="">No End Date</option>
+        <option value="Choose End Date">Choose End Date</option>
+      </select>
+    </div>
+    <div *ngIf="showEndDate" class="end-date-time">
+      <input [(ngModel)]="newTask.endDate" type="date" class="end-date-input">
+      <app-time-picker [(time)]="newTask.endTime"></app-time-picker>
+    </div>
+
+    <div *ngIf="newTask.repeat === 'Multiple Plays'" class="multiple-plays-options">
+      <select [(ngModel)]="newTask.multiplePlayType">
+        <option value="interval" selected>Interval</option>
+        <option value="timeSlots">Time Slots</option>
+      </select>
+
+      <div *ngIf="newTask.multiplePlayType === 'interval'" class="interval-selector">
+        <h4>Interval</h4>
+        <input type="number" [(ngModel)]="newTask.interval" min="1">
+        <select [(ngModel)]="newTask.intervalUnit">
+          <option value="minutes">Minutes</option>
+          <option value="hours">Hours</option>
+        </select>
+      </div>
+
+      <div *ngIf="newTask.multiplePlayType === 'timeSlots'" class="time-slots-selector">
+        <div *ngFor="let slot of newTask.timeSlots; let i = index" class="time-slot">
+          <app-time-picker [(time)]="newTask.timeSlots[i]"></app-time-picker>
+          <button *ngIf="i === newTask.timeSlots.length - 1" (click)="addTimeSlot()" class="add-time-slot">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="newTask.repeat === 'Multiple Plays' && newTask.multiplePlayType === 'interval'" class="active-hours">
+      <h4>Active Hours</h4>
+      <div class="time-range">
+        <app-time-picker [(time)]="newTask.activeHoursStart"></app-time-picker>
+        <span>to</span>
+        <app-time-picker [(time)]="newTask.activeHoursEnd"></app-time-picker>
+      </div>
+    </div>
+
+    <div *ngIf="newTask.repeat !== 'One Off'" class="day-selector">
+      <div class="day-options">
+        <span *ngFor="let day of weekDays"
+              [class.selected]="newTask.selectedDays.includes(day)"
+              (click)="toggleDaySelection(day)">
+          {{ day }}
+        </span>
+      </div>
+    </div>
+
+    <div class="color-selection">
+      <h4>Set Colour Code*</h4>
+      <div class="custom-select">
+        <div class="selected-color" 
+             [style.background-color]="newTask.color || '#f0f0f0'"
+             (click)="toggleColorDropdown()">
+          {{ newTask.color ? '' : 'Choose a color' }}
+        </div>
+        <div class="color-dropdown" *ngIf="showColorDropdown">
+          <div *ngFor="let color of availableColors" 
+               class="color-option"
+               [class.disabled]="isColorUsed(color)"
+               [style.background-color]="color"
+               (click)="!isColorUsed(color) && selectColor(color)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="interrupt-type-selection">
+      <h4>Interrupt Type</h4>
+      <select [(ngModel)]="newTask.interruptType">
+        <option value="wait">Wait</option>
+        <option value="mix">Mix</option>
+        <option value="halt">Halt</option>
+        <option value="overlay">Overlay</option>
+      </select>
+    </div>
+
+    <button (click)="addOrUpdateTask()" [disabled]="!isFormValid()">{{ isEditing ? 'Update Announcement' : 'Add Announcement' }}</button>
+    <button *ngIf="isEditing" (click)="deleteAnnouncement()" class="delete-button">Delete Announcement</button>
+  </div>
+</div>
