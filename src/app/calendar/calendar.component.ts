@@ -291,7 +291,7 @@ export class CalendarComponent implements OnInit {
 
       if (this.newTask.repeat === 'Multiple Plays') {
         if (this.newTask.multiplePlayType === 'interval') {
-          // Set default 24-hour period if active hours are empty
+          // Set default 24-hour period if active hours are emptys
           if (!this.newTask.activeHoursStart && !this.newTask.activeHoursEnd) {
             this.newTask.activeHoursStart = '0:00';
             this.newTask.activeHoursEnd = '23:59';
