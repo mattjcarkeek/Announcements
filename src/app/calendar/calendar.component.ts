@@ -142,7 +142,7 @@ export class CalendarComponent implements OnInit {
       if (task.repeat === 'Multiple Plays' && task.multiplePlayType === 'timeSlots') {
         // For time slots mimic the Daily columns:
         const period = '1d';
-        const hours = '0-24';
+        const hours = '0-23';
         const ranges = '0:00;23:59';
       
         // Return one export object per non-empty time slot.
@@ -188,15 +188,17 @@ export class CalendarComponent implements OnInit {
         let hours = '';
         let ranges = '';
         if (task.repeat === 'Daily' || task.repeat === 'One Off') {
-          hours = '0-24';
+          hours = '0-23';
           ranges = '0:00;23:59';
         } else if (task.repeat === 'Multiple Plays' && task.multiplePlayType === 'interval') {
           if (task.activeHoursStart && task.activeHoursEnd) {
-            const startHour = parseInt(task.activeHoursStart.split(':')[0]);
-            const endHour = parseInt(task.activeHoursEnd.split(':')[0]);
+            const formattedStart = this.convertTimeFormat(task.activeHoursStart);
+            const formattedEnd = this.convertTimeFormat(task.activeHoursEnd);
+            
+            const startHour = parseInt(formattedStart.split(':')[0]);
+            const endHour = parseInt(formattedEnd.split(':')[0]);
+            
             hours = `${startHour}-${endHour}`;
-            const formattedStart = task.activeHoursStart;
-            const formattedEnd = task.activeHoursEnd;
             ranges = `${formattedStart};${formattedEnd}`;
           }
         }
@@ -325,34 +327,52 @@ export class CalendarComponent implements OnInit {
       this.selectedDate = null;
     }
   }
-
-  editAnnouncement(task: any) {
-    this.isEditing = true;
-    this.editingTaskId = task.id;
-    this.newTask = { ...task };
-    this.selectedDate = new Date(task.date);
-    this.showEndDate = !!task.endDate;
-    if (task.endDate) {
-      const endDate = new Date(task.endDate);
-      this.newTask.endDate = this.formatDateForInput(endDate);
-      this.newTask.endTime = this.formatTimeForInput(endDate);
-      this.newTask.endDateChoice = 'Choose End Date';
-      this.showEndDate = true;
-    } else {
-      this.newTask.endDate = '';
-      this.newTask.endTime = '';
-      this.newTask.endDateChoice = '';
-      this.showEndDate = false;
+    editAnnouncement(task: any) {
+      this.isEditing = true;
+      this.editingTaskId = task.id;
+      this.newTask = { ...task };
+      this.selectedDate = new Date(task.date);
+      this.showEndDate = !!task.endDate;
+    
+      // Handle end date formatting
+      if (task.endDate) {
+        const endDate = new Date(task.endDate);
+        this.newTask.endDate = this.formatDateForInput(endDate);
+        this.newTask.endTime = this.formatTimeForInput(endDate);
+        this.newTask.endDateChoice = 'Choose End Date';
+        this.showEndDate = true;
+      } else {
+        this.newTask.endDate = '';
+        this.newTask.endTime = '';
+        this.newTask.endDateChoice = '';
+        this.showEndDate = false;
+      }
+    
+      // Ensure active hours are properly set for the edit form
+      if (task.activeHoursStart) {
+        this.newTask.activeHoursStart = task.activeHoursStart;
+      }
+    
+      if (task.activeHoursEnd) {
+        this.newTask.activeHoursEnd = task.activeHoursEnd;
+      }
+    
+      // Update play number and offset options based on assets
+      if (this.newTask.promoType === 'grouped' && this.newTask.assets.length > 0) {
+        const totalAssets = this.newTask.assets.length;
+        this.playNumberOptions = Array.from({ length: totalAssets }, (_, i) => i + 1);
+        this.offsetOptions = Array.from({ length: totalAssets - 1 }, (_, i) => i + 1);
+      }
+    
+      // Force change detection
+      this.detectChanges();
     }
 
-    // Update play number and offset options based on assets
-    if (this.newTask.promoType === 'grouped' && this.newTask.assets.length > 0) {
-      const totalAssets = this.newTask.assets.length;
-      this.playNumberOptions = Array.from({ length: totalAssets }, (_, i) => i + 1);
-      this.offsetOptions = Array.from({ length: totalAssets - 1 }, (_, i) => i + 1);
+    detectChanges() {
+      // This is a placeholder for your change detection implementation
+      // If you're using a ChangeDetectorRef, you would call detectChanges()
+      // If not, you might need to add it to your component
     }
-  }
-
   deleteAnnouncement() {
     if (this.isEditing && this.editingTaskId) {
       this.tasks = this.tasks.filter(task => task.id !== this.editingTaskId);
@@ -533,6 +553,26 @@ export class CalendarComponent implements OnInit {
     return date >= today;
   }
 
+  // Add this helper method
+  convertTimeFormat(timeString: string): string {
+    if (!timeString) return '';
+    
+    // Check if time already has AM/PM
+    if (timeString.includes('AM') || timeString.includes('PM')) {
+      // Convert from 12-hour to 24-hour format
+      const [timePart, ampm] = timeString.split(' ');
+      let [hours, minutes] = timePart.split(':').map(Number);
+      
+      if (ampm === 'PM' && hours < 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+      
+      return `${hours}:${minutes.toString().padStart(2, '0')}`;
+    }
+    
+    return timeString; // Already in 24-hour format
+  }
+
+
   resetNewTask(): void {
     this.newTask = {
       id: '',
@@ -545,7 +585,7 @@ export class CalendarComponent implements OnInit {
       interval: 1,
       intervalUnit: 'hours',
       activeHoursStart: '',
-      activeHoursEnd: '',
+      activeHoursEnd: '23:59', // Set default to 23:59
       interruptType: 'Wait',
       multiplePlayType: 'interval',
       timeSlots: [''],

@@ -197,16 +197,14 @@
         </div>
       </div>
     </div>
-
-    <div *ngIf="newTask.repeat === 'Multiple Plays' && newTask.multiplePlayType === 'interval'" class="active-hours">
-      <h4>Active Hours</h4>
-      <div class="time-range">
-        <app-time-picker [(time)]="newTask.activeHoursStart"></app-time-picker>
-        <span>to</span>
-        <app-time-picker [(time)]="newTask.activeHoursEnd"></app-time-picker>
+      <div *ngIf="newTask.repeat === 'Multiple Plays' && newTask.multiplePlayType === 'interval'" class="active-hours">
+        <h4>Active Hours</h4>
+        <div class="time-range">
+          <app-time-picker [(time)]="newTask.activeHoursStart"></app-time-picker>
+          <span>to</span>
+          <app-time-picker [(time)]="newTask.activeHoursEnd" [isEndTime]="true"></app-time-picker>
+        </div>
       </div>
-    </div>
-
     <div *ngIf="newTask.repeat !== 'One Off'" class="day-selector">
       <div class="day-options">
         <span *ngFor="let day of weekDays"
